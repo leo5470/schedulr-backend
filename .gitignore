@@ -1,0 +1,8 @@
+# macOS system files
+.DS_Store
+
+# npm dependencies
+node_modules/
+
+#VSCode
+.vscode
