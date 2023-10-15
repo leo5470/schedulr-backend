@@ -1,12 +1,12 @@
 const express = require('express')
 const mongoose = require('mongoose')
-const cors = require('cors');
+const cors = require('cors')
 
 require('dotenv').config()
 
 const api = require('./api')
 
-const mongoUri = process.env.MONGO_DB_URI;
+const mongoUri = process.env.MONGO_DB_URI
 
 mongoose.connect(mongoUri)
         .then(() => {
@@ -16,8 +16,8 @@ mongoose.connect(mongoUri)
             console.log(err)
         });
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const app = express()
+const PORT = process.env.PORT || 3000
 
 app.use(cors())
 
