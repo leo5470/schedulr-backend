@@ -31,7 +31,7 @@ router.get("/test", (req, res) => {
 })
 
 router.post("/user/new", async (req, res) => {
-  const { userId } = req.body
+  const { userId, email } = req.body
   if(!userId){
     return res.status(400).send({
       "message": "userId not provided."
@@ -41,11 +41,11 @@ router.post("/user/new", async (req, res) => {
     const userdata = new Userdata({
       createdAt: Date.now(),
       userId: userId,
+      email: email,
       events: [],
     })
     await userdata.save()
     // Make the following fields invisible
-    userdata["__v"] = undefined
     res.status(200).send(userdata)
   } catch (e) {
     res.status(500).send({
@@ -64,7 +64,7 @@ router.get("/user/:userId/events", async (req, res) => {
   try{
     const result = await Userdata.findOne({
       userId: userId
-    }, 'userId events -_id')
+    }, 'userId events')
     res.status(200).send(result)
   } catch (e) {
     return res.status(500).send({
