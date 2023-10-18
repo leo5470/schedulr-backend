@@ -1,16 +1,16 @@
 const mongoose = require('mongoose')
 
-const userdataSchema = new mongoose.Schema({
+const UserdataSchema = new mongoose.Schema({
     createdAt: Date,
     userId: String,
     events: [String],
 })
 
-userdataSchema.methods.toJSON = function () {
+UserdataSchema.methods.toJSON = function () {
     const obj = this.toObject()
     delete obj["__v"]
     delete obj["_id"]
     return obj
 }
 
-module.exports = mongoose.model('userdata', userdataSchema)
+module.exports = mongoose.model('userdata', UserdataSchema)
