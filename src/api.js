@@ -4,8 +4,6 @@ const mongoose = require('mongoose')
 const Userdata = require('./schemas/userdata')
 const Event = require('./schemas/event')
 const UserEvent = require('./schemas/userEvent')
-const userdata = require('./schemas/userdata')
-const event = require('./schemas/event')
 
 const router = express.Router()
 
@@ -125,6 +123,12 @@ router.patch("/event/:eventId/join", async (req, res) => {
     })
   }
   try{
+    const event = await Event.findById(eventId, 'people numOfPeople')
+    if(event["eventId"].length === event["numOfPeople"]){
+      return res.status(404).send({
+        "message": "Event is full."
+      })
+    }
     const userdata = await Userdata.findOne({
       userId: userId
     })
@@ -137,7 +141,6 @@ router.patch("/event/:eventId/join", async (req, res) => {
       userdata["events"].push(eventId)
       await userdata.save()
     }
-    const event = await Event.findById(eventId, 'people')
     if(!event){
       return res.status(404).send({
         "message": "Event not found."
@@ -154,18 +157,25 @@ router.patch("/event/:eventId/join", async (req, res) => {
       const userEvent = new UserEvent({
         userId: userId,
         eventId: eventId,
+        voted: false,
         intervals: []
       })
       await userEvent.save()
     }
     return res.status(200).send(userdata.toJSON())
   } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
     return res.status(500).send({
       "message": e.message
     })
   }
 })
 
+// TODO: test functions below
 router.patch("/event/:eventId/editTime", async (req, res) => {
   const { userId, intervals } = req.body
   const { eventId } = req.params
@@ -184,23 +194,22 @@ router.patch("/event/:eventId/editTime", async (req, res) => {
       "message" : "Invalid intervals."
     })
   }
-  // TODO: check if intervals is legal
-  if(!Userdata.exists({
-    userId: userId
-  })){
-    return res.status(404).send({
-      "message": "User not found."
-    })
-  }
-  if(!Event.exists({
-    eventId: eventId
-  })){
-    return res.status(404).send({
-      "message": "Event not found."
-    })
-  }
   try{
-    const userEvent = UserEvent.findOne({
+    if(!await Userdata.exists({
+      userId: userId
+    })){
+      return res.status(404).send({
+        "message": "User not found."
+      })
+    }
+    if(!await Event.exists({
+      eventId: eventId
+    })){
+      return res.status(404).send({
+        "message": "Event not found."
+      })
+    }
+    const userEvent = await UserEvent.findOne({
       userId: userId,
       eventId: eventId
     })
@@ -210,9 +219,129 @@ router.patch("/event/:eventId/editTime", async (req, res) => {
       })
     }
     userEvent["intervals"] = intervals
+    userEvent["voted"] = true
     await userEvent.save()
     return res.status(200).send(userEvent.toJSON())
   } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
+    return res.status(500).send({
+      "message": e.message
+    })
+  }
+})
+
+router.get("/event/:eventId/getEvent", async (req, res) => {
+  const { eventId } = req.params
+  try {
+    const event = await Event.findById(eventId)
+    if(!event){
+      return res.status(404).send({
+        "message": "Event not found."
+      })
+    }
+    return res.status(200).send(event.toJSON())
+  } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
+    return res.status(500).send({
+      "message": e.message
+    })
+  }
+})
+
+router.get("/event/:eventId/getNames", async(req, res) => {
+  const { eventId } = req.params
+  try {
+    const event = await Event.findById(eventId, 'names')
+    if(!event){
+      return res.status(404).send({
+        "message": "Event not found."
+      })
+    }
+    return res.status(200).send(event.toJSON())
+  } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
+    return res.status(500).send({
+      "message": e.message
+    })
+  }
+})
+
+router.get("/event/:eventId/getTime/:userId", async (req, res) => {
+  const { eventId, userId } = req.params
+  try {
+    if(!await Userdata.exists({
+      userId: userId
+    })){
+      return res.status(404).send({
+        "message": "User not found."
+      })
+    }
+    if(!await Event.exists({
+      eventId: eventId
+    })){
+      return res.status(404).send({
+        "message": "Event not found."
+      })
+    }
+    const userEvent = await UserEvent.findOne({
+      eventId: eventId,
+      userId: userId
+    })
+    return res.status(200).send(userEvent.toJSON())
+  } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
+    return res.status(500).send({
+      "message": e.message
+    })
+  }
+})
+
+router.get("/event/:eventId/getVoted", async (req, res) => {
+  const { eventId } = req.params
+  try {
+    const event = await Event.findById(eventId)
+    if(!event){
+      return res.status(404).send({
+        "message": "Event not found."
+      })
+    }
+    const { people } = event
+    var voted = 0
+    for(const userId in people){
+      var individual = await UserEvent.findOne({
+        eventId: eventId,
+        userId: userId
+      })
+      if(individual["voted"]){
+        voted++
+      }
+    }
+    return res.status(200).send({
+      "voted": voted,
+      "total": people.length
+    })
+  } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
     return res.status(500).send({
       "message": e.message
     })
