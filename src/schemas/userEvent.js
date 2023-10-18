@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 const UserEventSchema = new mongoose.Schema({
     userId: String,
     eventId: String,
+    voted: Boolean,
     intervals: [{
         startTime: Date,
         endTime: Date
