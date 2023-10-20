@@ -26,7 +26,7 @@ app.use(express.json())
 app.use('/', api)
 
 app.get('/', (req, res) => {
-	res.status(200).json({"message": "Hello from vercel"})
+	res.status(200).json({"message": "Hello from Render."})
 })
 
 app.get('*', (req, res) => {
