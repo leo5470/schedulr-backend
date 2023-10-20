@@ -1,11 +1,21 @@
 const express = require('express')
 const mongoose = require('mongoose')
+const schedule = require('node-schedule')
+const line = require('@line/bot-sdk');
 
 const Userdata = require('./schemas/userdata')
 const Event = require('./schemas/event')
 const UserEvent = require('./schemas/userEvent')
+const sendEmail = require('./mail')
+const lineCreateRemindMessage = require('./lineFunctionalities')
 
 const router = express.Router()
+
+const jobMap = new Map()
+
+const client = new line.messagingApi.MessagingApiClient({
+  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+});
 
 function isValidDate(dateString) {
   const date = new Date(dateString);
@@ -28,6 +38,14 @@ function isValidIntervals(intervals) {
 
 router.get("/test", (req, res) => {
     res.send({ msg: "you are amazing!" })
+})
+
+router.post("/test/send", async (req, res) => {
+  const { name, lineUserId } = req.body
+  await client.pushMessage({
+    to: lineUserId,
+    messages: [{ type: 'text', text: `hello, ${name}`}]
+  })
 })
 
 router.post("/user/new", async (req, res) => {
@@ -54,6 +72,7 @@ router.post("/user/new", async (req, res) => {
   }
 })
 
+// TODO: test
 router.get("/user/:userId/events", async (req, res) => {
   const { userId } = req.params
   if(!userId){
@@ -62,11 +81,24 @@ router.get("/user/:userId/events", async (req, res) => {
     })
   }
   try{
-    const result = await Userdata.findOne({
+    const userdata = await Userdata.findOne({
       userId: userId
     }, 'userId events')
-    res.status(200).send(result)
+    const events = []
+    for(eventId in userdata["events"]){
+      const event = Event.findById(eventId, 'name')
+      events.push({
+        "id": eventId,
+        "name": event["name"]
+      })
+    }
+    res.status(200).send(userdata)
   } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
     return res.status(500).send({
       "message": e.message
     })
@@ -83,8 +115,9 @@ router.post("/event/create", async (req, res) => {
       startDate: 'Date',
       endDate: 'Date',
       description: 'string',
-      deadline: 'Date',
-      doNotify: 'boolean',
+      // Optional
+      // deadline: 'Date',
+      // doNotify: 'boolean',
     };
     for (const field in expectedFields) {
       if (!(field in data)) {
@@ -104,6 +137,9 @@ router.post("/event/create", async (req, res) => {
     data["userId"] = undefined
     data["people"] = []
     data["createdAt"] = Date.now()
+    if(!data["doNotify"]){
+      data["doNotify"] = false
+    }
     const event = new Event(data)
     await event.save()
     return res.status(200).send(event.toJSON())
@@ -123,9 +159,9 @@ router.patch("/event/:eventId/join", async (req, res) => {
     })
   }
   try{
-    const event = await Event.findById(eventId, 'people numOfPeople')
+    const event = await Event.findById(eventId)
     if(event["eventId"].length === event["numOfPeople"]){
-      return res.status(404).send({
+      return res.status(400).send({
         "message": "Event is full."
       })
     }
@@ -161,6 +197,18 @@ router.patch("/event/:eventId/join", async (req, res) => {
         intervals: []
       })
       await userEvent.save()
+    }
+    if(event["doNotify"]){
+      const date = event["deadline"]
+      date.setHours(date.getHours() - 2)
+      const job = schedule.scheduleJob(date, () => {
+        sendEmail(userdata["email"], event["name"])
+        .catch(err => {
+          console.log('Failed to send email:', err);
+        })
+      })
+      const key = `${eventId}_${userId}`
+      jobMap.set(key, job)
     }
     return res.status(200).send(userdata.toJSON())
   } catch (e) {
@@ -219,7 +267,13 @@ router.patch("/event/:eventId/editTime", async (req, res) => {
       })
     }
     userEvent["intervals"] = intervals
-    userEvent["voted"] = true
+    if(!userEvent["voted"]){
+      userEvent["voted"] = true
+      const key = `${eventId}_${userId}`
+      const job = jobMap.get(key)
+      job.cancel()
+      jobMap.delete(key)
+    }
     await userEvent.save()
     return res.status(200).send(userEvent.toJSON())
   } catch (e) {
