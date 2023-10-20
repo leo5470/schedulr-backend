@@ -26,7 +26,7 @@ app.use(express.json())
 app.use('/', api)
 
 app.get('*', (req, res) => {
-	res.status(404).json({ error: 'Page did not exist' })
+	res.status(418).json({ error: 'I\'m a teapot.' })
 })
 
 app.use((err, req, res, next) => {
