@@ -25,8 +25,12 @@ app.use(express.json())
 
 app.use('/', api)
 
+app.get('/', (req, res) => {
+	res.status(200).json({"message": "Hello from vercel"})
+})
+
 app.get('*', (req, res) => {
-	res.status(418).json({ error: 'I\'m a teapot.' })
+	res.status(404).json({ error: 'Page not found' })
 })
 
 app.use((err, req, res, next) => {
