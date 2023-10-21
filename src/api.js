@@ -74,7 +74,28 @@ router.post("/user/new", async (req, res) => {
       events: [],
     })
     await userdata.save()
-    // Make the following fields invisible
+    res.status(200).send(userdata)
+  } catch (e) {
+    res.status(500).send({
+      "message": e.message
+    })
+  }
+})
+
+router.post("/user/new/clerk", async (req, res) => {
+  const data = req.body.data
+  const userId = data.id
+  const username = data.username
+  const email = data.email_addresses[0].email_address
+  try{
+    const userdata = new Userdata({
+      createdAt: Date.now(),
+      userId: userId,
+      username: username,
+      email: email,
+      events: [],
+    })
+    await userdata.save()
     res.status(200).send(userdata)
   } catch (e) {
     res.status(500).send({
