@@ -423,3 +423,5 @@ router.get("/event/:eventId/getVoted", async (req, res) => {
     })
   }
 })
+
+module.exports = router
