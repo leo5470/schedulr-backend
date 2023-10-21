@@ -29,10 +29,6 @@ app.use(express.json())
 
 app.use('/', api)
 
-app.head('/', (req, res) => {
-	res.status(200)
-})
-
 app.get('/', (req, res) => {
 	res.status(200).json({"message": "Hello from Render."})
 })
