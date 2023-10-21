@@ -8,6 +8,10 @@ const api = require('./api')
 
 const mongoUri = process.env.MONGO_DB_URI
 
+const corsOptions = {
+	// origin: 'https://schedulr-frontend.pages.dev/',
+}
+
 mongoose.connect(mongoUri)
         .then(() => {
             console.log('MongoDB is connected')
@@ -19,11 +23,15 @@ mongoose.connect(mongoUri)
 const app = express()
 const PORT = process.env.PORT || 3000
 
-app.use(cors())
+app.use(cors(corsOptions))
 
 app.use(express.json())
 
 app.use('/', api)
+
+app.head('/', (req, res) => {
+	res.status(200)
+})
 
 app.get('/', (req, res) => {
 	res.status(200).json({"message": "Hello from Render."})
