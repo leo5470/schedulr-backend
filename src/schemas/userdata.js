@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 const UserdataSchema = new mongoose.Schema({
     createdAt: Date,
     userId: String,
+    username: String,
     email: String,
     events: [String],
 })

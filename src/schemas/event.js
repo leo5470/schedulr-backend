@@ -5,7 +5,10 @@ const EventSchema = new mongoose.Schema({
     createdAt: Date,
     createdBy: String, // userId
     numOfPeople: Number,
-    people: [String], // Array of userId, should include creator
+    people: [{
+        userId: String,
+        username: String
+    }], // should include creator
     startDate: Date,
     endDate: Date,
     description: String,

@@ -49,16 +49,27 @@ router.post("/test/send", async (req, res) => {
 })
 
 router.post("/user/new", async (req, res) => {
-  const { userId, email } = req.body
+  const { userId, username, email } = req.body
   if(!userId){
     return res.status(400).send({
       "message": "userId not provided."
+    })
+  }
+  if(!username){
+    return res.status(400).send({
+      "message": "username not provided."
+    })
+  }
+  if(!email){
+    return res.status(400).send({
+      "message": "email not provided."
     })
   }
   try{
     const userdata = new Userdata({
       createdAt: Date.now(),
       userId: userId,
+      username: username,
       email: email,
       events: [],
     })
@@ -84,11 +95,16 @@ router.get("/user/:userId/events", async (req, res) => {
     const userdata = await Userdata.findOne({
       userId: userId
     }, 'userId events')
+    if(!userdata){
+      return res.status(404).send({
+        "message": "User not found."
+      })
+    }
     const events = []
     for(eventId in userdata["events"]){
       const event = Event.findById(eventId, 'name')
       events.push({
-        "id": eventId,
+        "eventId": eventId,
         "name": event["name"]
       })
     }
@@ -96,7 +112,7 @@ router.get("/user/:userId/events", async (req, res) => {
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
-        "error": "Event not found"
+        "error": "User not found"
       })
     }
     return res.status(500).send({
@@ -119,6 +135,12 @@ router.post("/event/create", async (req, res) => {
       // deadline: 'Date',
       // doNotify: 'boolean',
     };
+    const userdata = Userdata.findOne({userId: data["userId"]})
+    if(!userdata){
+      req.send(400).send({
+        "message": "Can't create event since user does not exist."
+      })
+    }
     for (const field in expectedFields) {
       if (!(field in data)) {
         return res.status(400).send({
@@ -135,7 +157,7 @@ router.post("/event/create", async (req, res) => {
     }
     data["createdBy"] = data["userId"]
     data["userId"] = undefined
-    data["people"] = []
+    data["people"] = [{userId: userdata["userId"], username: userdata["username"]}]
     data["createdAt"] = Date.now()
     if(!data["doNotify"]){
       data["doNotify"] = false
@@ -182,8 +204,8 @@ router.patch("/event/:eventId/join", async (req, res) => {
         "message": "Event not found."
       })
     }
-    if(!event["people"].includes(userId)){
-      event["people"].push(userId)
+    if(!event["people"].includes({userId: userId, username: userdata["username"]})){
+      event["people"].push({userId: userId, username: userdata["username"]})
       await event.save()
     }
     if(!await UserEvent.findOne({
@@ -313,7 +335,7 @@ router.get("/event/:eventId/getEvent", async (req, res) => {
 router.get("/event/:eventId/getNames", async(req, res) => {
   const { eventId } = req.params
   try {
-    const event = await Event.findById(eventId, 'names')
+    const event = await Event.findById(eventId, 'people')
     if(!event){
       return res.status(404).send({
         "message": "Event not found."
@@ -401,5 +423,3 @@ router.get("/event/:eventId/getVoted", async (req, res) => {
     })
   }
 })
-
-module.exports = router
