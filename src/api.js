@@ -353,7 +353,7 @@ router.get("/event/:eventId/getEvent", async (req, res) => {
   }
 })
 
-router.get("/event/:eventId/getNames", async(req, res) => {
+router.get("/event/:eventId/getPeople", async(req, res) => {
   const { eventId } = req.params
   try {
     const event = await Event.findById(eventId, 'people')
@@ -363,6 +363,43 @@ router.get("/event/:eventId/getNames", async(req, res) => {
       })
     }
     return res.status(200).send(event.toJSON())
+  } catch (e) {
+    if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
+      return res.status(404).send({
+        "error": "Event not found"
+      })
+    }
+    return res.status(500).send({
+      "message": e.message
+    })
+  }
+})
+
+router.get("/event/:eventId/getTime", async (req, res) => {
+  const { eventId } = req.params
+  try {
+    const event = await Event.findById(eventId)
+    const timeMap = new Map()
+
+    for(userId in event["people"]["userId"]){
+      const userEvent = UserEvent.findOne({
+        eventId: eventId,
+        userId: userId
+      })
+      for(interval in userEvent["intervals"]){
+        if(timeMap.has(interval)){
+          timeMap[interval] += 1
+        } else {
+          timeMap.set(interval, 1)
+        }
+      }
+      const mapObj = Object.fromEntries(timeMap)
+      const resObj = {
+        "eventId": eventId,
+        "time": mapObj
+      }
+      res.status(200).json(resObj)
+    }
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
