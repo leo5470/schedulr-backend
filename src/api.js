@@ -178,7 +178,7 @@ router.post("/event/create", async (req, res) => {
     for (const field in expectedFields) {
       if (!(field in data)) {
         return res.status(400).send({
-          "message": "${field} not provided."
+          "message": `${field} not provided.`
         })
       }
       const fieldType = expectedFields[field];
