@@ -5,6 +5,7 @@ const UserdataSchema = new mongoose.Schema({
     userId: String,
     username: String,
     email: String,
+    lineId: String,
     events: [String],
 })
 
