@@ -164,6 +164,7 @@ router.post("/event/create", async (req, res) => {
       startDate: 'Date',
       endDate: 'Date',
       description: 'string',
+      isAvailable: 'boolean'
       // Optional
       // deadline: 'Date',
       // doNotify: 'boolean',

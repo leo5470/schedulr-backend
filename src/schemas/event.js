@@ -14,6 +14,7 @@ const EventSchema = new mongoose.Schema({
     description: String,
     deadline: Date,
     doNotify: Boolean,
+    isAvailable: Boolean
 })
 
 EventSchema.methods.toJSON = function () {
