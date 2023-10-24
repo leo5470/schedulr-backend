@@ -87,12 +87,17 @@ router.post("/user/new/clerk", async (req, res) => {
   const userId = data.id
   const username = data.username
   const email = data.email_addresses[0].email_address
+  let lineId = null
+  if(data.external_accounts.length != 0){
+    lineId = data.external_accounts.provider_user_id
+  }
   try{
     const userdata = new Userdata({
       createdAt: Date.now(),
       userId: userId,
       username: username,
       email: email,
+      lineId: lineId,
       events: [],
     })
     await userdata.save()
