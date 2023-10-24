@@ -42,10 +42,17 @@ router.get("/test", (req, res) => {
 
 router.post("/test/send", async (req, res) => {
   const { name, lineUserId } = req.body
-  await client.pushMessage({
+  try {
+    await client.pushMessage({
     to: lineUserId,
     messages: [{ type: 'text', text: `hello, ${name}`}]
-  })
+    })
+    res.status(200).send('OK')
+  } catch (e) {
+    res.status(500).send({
+      "message": e.message
+    })
+  }
 })
 
 router.post("/user/new", async (req, res) => {
@@ -249,12 +256,25 @@ router.patch("/event/:eventId/join", async (req, res) => {
     if(event["doNotify"]){
       const date = event["deadline"]
       date.setHours(date.getHours() - 2)
-      const job = schedule.scheduleJob(date, () => {
-        sendEmail(userdata["email"], event["name"])
-        .catch(err => {
-          console.log('Failed to send email:', err);
+      let job
+      if(userdata["lineId"]){
+        job = schedule.scheduleJob(date, () => {
+          client.pushMessage({
+            to: userdata["lineId"],
+            messages: [{type: "text", text: lineCreateRemindMessage(event["name"])}]
+          })
+          .catch(err => {
+            console.log('Failed to send LINE message:', err)
+          })
         })
-      })
+      } else {
+        job = schedule.scheduleJob(date, () => {
+          sendEmail(userdata["email"], event["name"])
+          .catch(err => {
+            console.log('Failed to send email:', err)
+          })
+        })
+      }
       const key = `${eventId}_${userId}`
       jobMap.set(key, job)
     }
