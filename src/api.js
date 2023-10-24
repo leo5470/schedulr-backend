@@ -89,7 +89,7 @@ router.post("/user/new/clerk", async (req, res) => {
   const email = data.email_addresses[0].email_address
   let lineId = null
   if(data.external_accounts.length != 0){
-    lineId = data.external_accounts.provider_user_id
+    lineId = data.external_accounts[0].provider_user_id
   }
   try{
     const userdata = new Userdata({
