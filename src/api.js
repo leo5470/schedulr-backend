@@ -199,6 +199,7 @@ router.post("/event/create", async (req, res) => {
     const event = new Event(data)
     await event.save()
     const eventId = event["_id"]
+    const userId = data["createdBy"]
     const userEvent = new UserEvent({
       userId: userId,
       eventId: eventId,
