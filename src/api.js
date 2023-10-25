@@ -7,15 +7,15 @@ const Userdata = require('./schemas/userdata')
 const Event = require('./schemas/event')
 const UserEvent = require('./schemas/userEvent')
 const sendEmail = require('./mail')
-const lineCreateRemindMessage = require('./lineFunctionalities')
+// const lineCreateRemindMessage = require('./lineFunctionalities')
 
 const router = express.Router()
 
 const jobMap = new Map()
 
-const client = new line.messagingApi.MessagingApiClient({
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
-});
+// const client = new line.messagingApi.MessagingApiClient({
+//   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
+// });
 
 function isValidDate(dateString) {
   const date = new Date(dateString);
@@ -95,9 +95,9 @@ router.post("/user/new/clerk", async (req, res) => {
   const username = data.username
   const email = data.email_addresses[0].email_address
   let lineId = null
-  if(data.external_accounts.length != 0){
-    lineId = data.external_accounts[0].provider_user_id
-  }
+  // if(data.external_accounts[0].provider === "oauth_line"){
+  //   lineId = data.external_accounts[0].provider_user_id
+  // }
   try{
     const userdata = new Userdata({
       createdAt: Date.now(),
@@ -267,24 +267,25 @@ router.patch("/event/:eventId/join", async (req, res) => {
       const date = event["deadline"]
       date.setHours(date.getHours() - 2)
       let job
-      if(userdata["lineId"]){
-        job = schedule.scheduleJob(date, () => {
-          client.pushMessage({
-            to: userdata["lineId"],
-            messages: [{type: "text", text: lineCreateRemindMessage(event["name"])}]
-          })
-          .catch(err => {
-            console.log('Failed to send LINE message:', err)
-          })
-        })
-      } else {
+      if(!userdata["lineId"]){
         job = schedule.scheduleJob(date, () => {
           sendEmail(userdata["email"], event["name"])
           .catch(err => {
             console.log('Failed to send email:', err)
           })
         })
-      }
+      } 
+      // else {
+      //   job = schedule.scheduleJob(date, () => {
+      //     client.pushMessage({
+      //       to: userdata["lineId"],
+      //       messages: [{type: "text", text: lineCreateRemindMessage(event["name"])}]
+      //     })
+      //     .catch(err => {
+      //       console.log('Failed to send LINE message:', err)
+      //     })
+      //   })
+      // }
       const key = `${eventId}_${userId}`
       jobMap.set(key, job)
     }
