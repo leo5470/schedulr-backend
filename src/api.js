@@ -198,6 +198,14 @@ router.post("/event/create", async (req, res) => {
     }
     const event = new Event(data)
     await event.save()
+    const eventId = event["_id"]
+    const userEvent = new UserEvent({
+      userId: userId,
+      eventId: eventId,
+      voted: false,
+      intervals: []
+    })
+    await userEvent.save()
     return res.status(200).send(event.toJSON())
   } catch (e) {
     return res.status(500).send({
