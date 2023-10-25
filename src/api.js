@@ -482,7 +482,7 @@ router.get("/event/:eventId/getTime/:userId", async (req, res) => {
   }
 })
 
-router.get("/event/:eventId/getVoted", async (req, res) => {
+router.get("/event/:eventId/getVoteStatus", async (req, res) => {
   const { eventId } = req.params
   try {
     const event = await Event.findById(eventId)
@@ -503,7 +503,7 @@ router.get("/event/:eventId/getVoted", async (req, res) => {
       }
     }
     return res.status(200).send({
-      "voted": voted,
+      "notVoted": people.length - voted,
       "total": people.length
     })
   } catch (e) {
