@@ -40,9 +40,9 @@ router.post("/test/send", async (req, res) => {
     to: lineUserId,
     messages: [{ type: 'text', text: `hello, ${name}`}]
     })
-    res.status(200).send('OK')
+    return res.status(200).send('OK')
   } catch (e) {
-    res.status(500).send({
+    return res.status(500).send({
       "message": e.message
     })
   }
@@ -74,9 +74,9 @@ router.post("/user/new", async (req, res) => {
       events: [],
     })
     await userdata.save()
-    res.status(200).send(userdata)
+    return res.status(200).send(userdata)
   } catch (e) {
-    res.status(500).send({
+    return res.status(500).send({
       "message": e.message
     })
   }
@@ -101,9 +101,9 @@ router.post("/user/new/clerk", async (req, res) => {
       events: [],
     })
     await userdata.save()
-    res.status(200).send(userdata)
+    return res.status(200).send(userdata)
   } catch (e) {
-    res.status(500).send({
+    return res.status(500).send({
       "message": e.message
     })
   }
@@ -134,7 +134,7 @@ router.get("/user/:userId/events", async (req, res) => {
         "name": event["name"]
       })
     }
-    res.status(200).send(userdata)
+    return res.status(200).send(userdata)
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
@@ -164,7 +164,7 @@ router.post("/event/create", async (req, res) => {
     };
     const userdata = await Userdata.findOne({userId: data["userId"]})
     if(!userdata){
-      res.status(400).send({
+      return res.status(400).send({
         "message": "Can't create event since user does not exist."
       })
     }
@@ -456,7 +456,7 @@ router.get("/event/:eventId/getTime", async (req, res) => {
         "eventId": eventId,
         "time": mapArray
       }
-      res.status(200).json(resObj)
+      return res.status(200).json(resObj)
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
