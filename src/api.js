@@ -1,7 +1,8 @@
 const express = require('express')
 const mongoose = require('mongoose')
 const schedule = require('node-schedule')
-const line = require('@line/bot-sdk');
+const Gradient  = require("javascript-color-gradient");
+// const line = require('@line/bot-sdk');
 
 const Userdata = require('./schemas/userdata')
 const Event = require('./schemas/event')
@@ -13,6 +14,11 @@ const {split30, isValidIntervals} = require('./interval')
 const router = express.Router()
 
 const jobMap = new Map()
+
+const gradientArray = new Gradient()
+  .setColorGradient("#FFFFFF", "#ED872D")
+  .setMidpoint(10)
+  .getColors();
 
 // const client = new line.messagingApi.MessagingApiClient({
 //   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
@@ -414,6 +420,7 @@ router.get("/event/:eventId/getPeople", async(req, res) => {
   }
 })
 
+// TODO: color pick
 router.get("/event/:eventId/getTime", async (req, res) => {
   const { eventId } = req.params
   try {
@@ -439,6 +446,12 @@ router.get("/event/:eventId/getTime", async (req, res) => {
       }
     }
     const mapArray = Array.from(timeMap)
+    const arrayLen = mapArray.length
+    for(let i = 0; i < arrayLen; i++){
+      const timeArray = mapArray[i]
+      const num = Math.round((timeArray[1] / peopleLen ) * 9)
+      timeArray.push(gradientArray[num])
+    }
       const resObj = {
         "eventId": eventId,
         "time": mapArray
