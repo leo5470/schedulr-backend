@@ -7,6 +7,7 @@ const Userdata = require('./schemas/userdata')
 const Event = require('./schemas/event')
 const UserEvent = require('./schemas/userEvent')
 const sendEmail = require('./mail')
+const {split30, isValidIntervals} = require('./interval')
 // const lineCreateRemindMessage = require('./lineFunctionalities')
 
 const router = express.Router()
@@ -20,20 +21,6 @@ const jobMap = new Map()
 function isValidDate(dateString) {
   const date = new Date(dateString);
   return !isNaN(date.getTime()) // verify if the string is successfully parsed into a date object.
-}
-
-function isValidIntervals(intervals) {
-  return intervals.every(interval => {
-    const { startTime, endTime } = interval;
-
-    // Check if startTime and endTime are valid Date objects
-    if (!(startTime instanceof Date) || !(endTime instanceof Date)) {
-      return false;
-    }
-
-    // Check if startTime is less than endTime
-    return startTime < endTime;
-  });
 }
 
 router.get("/test", (req, res) => {
@@ -74,7 +61,7 @@ router.post("/user/new", async (req, res) => {
   }
   try{
     const userdata = new Userdata({
-      createdAt: Date.now(),
+      createdAt: new Date(Date.now()),
       userId: userId,
       username: username,
       email: email,
@@ -100,7 +87,7 @@ router.post("/user/new/clerk", async (req, res) => {
   // }
   try{
     const userdata = new Userdata({
-      createdAt: Date.now(),
+      createdAt: new Date(Date.now()),
       userId: userId,
       username: username,
       email: email,
@@ -135,7 +122,7 @@ router.get("/user/:userId/events", async (req, res) => {
     }
     const events = []
     for(eventId in userdata["events"]){
-      const event = Event.findById(eventId, 'name')
+      const event = await Event.findById(eventId, 'name')
       events.push({
         "eventId": eventId,
         "name": event["name"]
@@ -169,7 +156,7 @@ router.post("/event/create", async (req, res) => {
       // deadline: 'Date',
       // doNotify: 'boolean',
     };
-    const userdata = Userdata.findOne({userId: data["userId"]})
+    const userdata = await Userdata.findOne({userId: data["userId"]})
     if(!userdata){
       req.send(400).send({
         "message": "Can't create event since user does not exist."
@@ -191,8 +178,13 @@ router.post("/event/create", async (req, res) => {
     }
     data["createdBy"] = data["userId"]
     data["userId"] = undefined
-    data["people"] = [{userId: userdata["userId"], username: userdata["username"]}]
-    data["createdAt"] = Date.now()
+    data["people"] = new Array({userId: userdata["userId"], username: userdata["username"]})
+    data["createdAt"] = new Date(Date.now())
+    data["startDate"] = new Date(data["startDate"])
+    data["endDate"] = new Date(data["endDate"])
+    if(data["deadline"]){
+      data["deadline"] = new Date(data["deadline"])
+    }
     if(!data["doNotify"]){
       data["doNotify"] = false
     }
@@ -225,7 +217,7 @@ router.patch("/event/:eventId/join", async (req, res) => {
   }
   try{
     const event = await Event.findById(eventId)
-    if(event["eventId"].length === event["numOfPeople"]){
+    if(event["people"].length >= event["numOfPeople"]){
       return res.status(400).send({
         "message": "Event is full."
       })
@@ -330,7 +322,7 @@ router.patch("/event/:eventId/editTime", async (req, res) => {
       })
     }
     if(!await Event.exists({
-      eventId: eventId
+      _id: eventId
     })){
       return res.status(404).send({
         "message": "Event not found."
@@ -345,13 +337,24 @@ router.patch("/event/:eventId/editTime", async (req, res) => {
         "message": "User is not part of the event."
       })
     }
-    userEvent["intervals"] = intervals
+    var newIntervals = []
+    const intervalsLen = intervals.length
+    for(let i = 0; i < intervalsLen; i++) {
+      let splits = split30(intervals[i])
+      const splitLen = splits.length
+      for(let j = 0; j < splitLen; j++){
+        newIntervals.push(splits[j])
+      }
+    }
+    userEvent["intervals"] = newIntervals
     if(!userEvent["voted"]){
       userEvent["voted"] = true
       const key = `${eventId}_${userId}`
       const job = jobMap.get(key)
-      job.cancel()
-      jobMap.delete(key)
+      if(job) {
+        job.cancel()
+        jobMap.delete(key)
+      }
     }
     await userEvent.save()
     return res.status(200).send(userEvent.toJSON())
@@ -416,26 +419,31 @@ router.get("/event/:eventId/getTime", async (req, res) => {
   try {
     const event = await Event.findById(eventId)
     const timeMap = new Map()
-
-    for(userId in event["people"]["userId"]){
-      const userEvent = UserEvent.findOne({
+    const peopleLen = event["people"].length
+    for(let i = 0; i < peopleLen; i++){
+      const userId = event["people"][i]["userId"]
+      const userEvent = await UserEvent.findOne({
         eventId: eventId,
         userId: userId
       })
-      for(interval in userEvent["intervals"]){
-        if(timeMap.has(interval)){
-          timeMap[interval] += 1
-        } else {
-          timeMap.set(interval, 1)
+      if(userEvent["voted"]){
+        const intervals = userEvent["intervals"]
+        intervalsLen = intervals.length
+        for(let i = 0; i < intervalsLen; i++){
+          if(timeMap.has(intervals[i])){
+            timeMap[intervals[i]] += 1
+          } else {
+            timeMap.set(intervals[i], 1)
+          }
         }
       }
-      const mapObj = Object.fromEntries(timeMap)
+    }
+    const mapArray = Array.from(timeMap)
       const resObj = {
         "eventId": eventId,
-        "time": mapObj
+        "time": mapArray
       }
       res.status(200).json(resObj)
-    }
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
@@ -459,7 +467,7 @@ router.get("/event/:eventId/getTime/:userId", async (req, res) => {
       })
     }
     if(!await Event.exists({
-      eventId: eventId
+      _id: eventId
     })){
       return res.status(404).send({
         "message": "Event not found."
@@ -492,8 +500,10 @@ router.get("/event/:eventId/getVoteStatus", async (req, res) => {
       })
     }
     const { people } = event
+    const peopleLen = people.length
     var voted = 0
-    for(const userId in people){
+    for(let i = 0; i < peopleLen; i++){
+      const userId = people[i]["userId"]
       var individual = await UserEvent.findOne({
         eventId: eventId,
         userId: userId
