@@ -207,6 +207,7 @@ router.post("/event/create", async (req, res) => {
     })
     await userEvent.save()
     userdata["events"].push(eventId)
+    await userdata.save()
     return res.status(200).send(event.toJSON())
   } catch (e) {
     return res.status(500).send({
