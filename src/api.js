@@ -127,10 +127,11 @@ router.get("/user/:userId/events", async (req, res) => {
       })
     }
     const events = []
-    for(eventId in userdata["events"]){
-      const event = await Event.findById(eventId, 'name')
+    const eventsLen = userdata["events"].length
+    for(let i = 0; i < eventsLen; i++){
+      const event = await Event.findById(userdata["events"][i], 'name')
       events.push({
-        "eventId": eventId,
+        "eventId": userdata["events"][i],
         "name": event["name"]
       })
     }
@@ -138,7 +139,7 @@ router.get("/user/:userId/events", async (req, res) => {
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
-        "error": "User not found"
+        "error": "Event not found."
       })
     }
     return res.status(500).send({
@@ -205,6 +206,7 @@ router.post("/event/create", async (req, res) => {
       intervals: []
     })
     await userEvent.save()
+    userdata["events"].push(eventId)
     return res.status(200).send(event.toJSON())
   } catch (e) {
     return res.status(500).send({
@@ -236,14 +238,14 @@ router.patch("/event/:eventId/join", async (req, res) => {
         "message": "User not found."
       })
     }
-    if(!userdata["events"].includes(eventId)){
-      userdata["events"].push(eventId)
-      await userdata.save()
-    }
     if(!event){
       return res.status(404).send({
         "message": "Event not found."
       })
+    }
+    if(!userdata["events"].includes(eventId)){
+      userdata["events"].push(eventId)
+      await userdata.save()
     }
     if(!event["people"].includes({userId: userId, username: userdata["username"]})){
       event["people"].push({userId: userId, username: userdata["username"]})
