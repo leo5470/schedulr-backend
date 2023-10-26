@@ -158,7 +158,7 @@ router.post("/event/create", async (req, res) => {
     };
     const userdata = await Userdata.findOne({userId: data["userId"]})
     if(!userdata){
-      req.send(400).send({
+      res.status(400).send({
         "message": "Can't create event since user does not exist."
       })
     }
