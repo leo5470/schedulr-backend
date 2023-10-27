@@ -136,7 +136,10 @@ router.get("/user/:userId/events", async (req, res) => {
       })
     }
     userdata["events"] = events
-    return res.status(200).send(userdata)
+    return res.status(200).send({
+      "userId": userId,
+      "events": events
+    })
   } catch (e) {
     if(e instanceof mongoose.CastError) { // If the _id string cannot cast to proper ObjectId, still identify as not found.
       return res.status(404).send({
